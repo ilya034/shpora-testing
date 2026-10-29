@@ -6,8 +6,7 @@ namespace HomeExercise.Tasks.NumberValidator;
 [TestFixture]
 public class NumberValidatorTests
 {
-    [TestCase(0, Description = "PrecisionIsZero")]
-    [TestCase(-1, Description = "PrecisionIsNegative")]
+    [TestCaseSource(nameof(InvalidPrecisionCases))]
     public void Constructor_ShouldThrowArgumentException_WhenInvalidPrecision(int precision)
     {
         Action act = () => new NumberValidator(precision);
@@ -16,9 +15,7 @@ public class NumberValidatorTests
             .WithMessage("*precision must be*");
     }
 
-    [TestCase(1, -1, Description = "ScaleIsNegative")]
-    [TestCase(1, 1, Description = "ScaleEqualsPrecision")]
-    [TestCase(1, 2, Description = "ScaleGreaterThanPrecision")]
+    [TestCaseSource(nameof(InvalidScaleCases))]
     public void Constructor_ShouldThrowArgumentException_WhenInvalidScale(int precision, int scale)
     {
         Action act = () => new NumberValidator(precision, scale);
@@ -27,8 +24,7 @@ public class NumberValidatorTests
             .WithMessage("*scale must be*");
     }
 
-    [TestCase(1, 0, true, Description = "MinValidPrecisionAndZeroScale")]
-    [TestCase(3, 2, false, Description = "ValidPrecisionAndPositiveScale")]
+    [TestCaseSource(nameof(ValidConstructorCases))]
     public void Constructor_ShouldNotThrow_WhenValidArguments(int precision, int scale, bool onlyPositive)
     {
         Action act = () => new NumberValidator(precision, scale, onlyPositive);
@@ -36,18 +32,7 @@ public class NumberValidatorTests
         act.Should().NotThrow();
     }
 
-    [TestCase(null, Description = "ValueIsNull")]
-    [TestCase("", Description = "ValueIsEmpty")]
-    [TestCase("   ", Description = "ValueIsWhitespace")]
-    [TestCase(" 1.1", Description = "LeadingWhitespace")]
-    [TestCase("1.1 ", Description = "TrailingWhitespace")]
-    [TestCase("a.sd", Description = "FullLettersInsteadDigits")]
-    [TestCase("1.a", Description = "LettersInFractionalPart")]
-    [TestCase("a.1", Description = "LettersInIntegerPart")]
-    [TestCase("1.", Description = "MissingFractionalPartAfterSeparator")]
-    [TestCase(".1", Description = "MissingIntegerPartBeforeSeparator")]
-    [TestCase("1,.1", Description = "MultipleSeparators")]
-    [TestCase("++1", Description = "MultipleSigns")]
+    [TestCaseSource(nameof(InvalidFormatCases))]
     public void IsValidNumber_ShouldReturnFalse_WhenInvalidFormat(string? value)
     {
         var validator = new NumberValidator(10, 5);
@@ -55,10 +40,7 @@ public class NumberValidatorTests
         validator.IsValidNumber(value!).Should().BeFalse();
     }
 
-    [TestCase("00.00", 3, 2, Description = "DigitsCountExceedsPrecision")]
-    [TestCase("1234", 3, 0, Description = "IntegerLengthExceedsPrecision")]
-    [TestCase("+1.23", 3, 2, Description = "LengthWithSignExceedsPrecision")]
-    [TestCase("-1.23", 3, 2, Description = "LengthWithMinusSignExceedsPrecision")]
+    [TestCaseSource(nameof(PrecisionExceededCases))]
     public void IsValidNumber_ShouldReturnFalse_WhenPrecisionExceeded(string value, int precision, int scale)
     {
         var validator = new NumberValidator(precision, scale);
@@ -66,8 +48,7 @@ public class NumberValidatorTests
         validator.IsValidNumber(value).Should().BeFalse();
     }
 
-    [TestCase("0.00", 5, 1, Description = "FractionalPartExceedsNonZeroScale")]
-    [TestCase("1.1", 5, 0, Description = "FractionalPartPresentWhenScaleIsZero")]
+    [TestCaseSource(nameof(ScaleExceededCases))]
     public void IsValidNumber_ShouldReturnFalse_WhenScaleExceeded(string value, int precision, int scale)
     {
         var validator = new NumberValidator(precision, scale);
@@ -75,8 +56,7 @@ public class NumberValidatorTests
         validator.IsValidNumber(value).Should().BeFalse();
     }
 
-    [TestCase("-1", Description = "NegativeIntegerWhenOnlyPositive")]
-    [TestCase("-1.11", Description = "NegativeFractionWhenOnlyPositive")]
+    [TestCaseSource(nameof(NegativeNumberWhenOnlyPositiveCases))]
     public void IsValidNumber_ShouldReturnFalse_WhenNumberIsNegativeAndOnlyPositiveIsTrue(string value)
     {
         var validator = new NumberValidator(5, 2, true);
@@ -84,12 +64,7 @@ public class NumberValidatorTests
         validator.IsValidNumber(value).Should().BeFalse();
     }
 
-    [TestCase("0", 1, 0, true, Description = "SingleDigitZero")]
-    [TestCase("1.1", 5, 2, true, Description = "ValidNumberWithDotSeparator")]
-    [TestCase("1,1", 5, 2, true, Description = "ValidNumberWithCommaSeparator")]
-    [TestCase("+1.23", 4, 2, true, Description = "PositiveWithPlusSignMatchingExactPrecisionAndScale")]
-    [TestCase("-1.23", 4, 2, false, Description = "NegativeMatchingExactPrecisionAndScaleWhenAllowed")]
-    [TestCase("123", 3, 2, true, Description = "IntegerWithScaleGreaterThanZero")]
+    [TestCaseSource(nameof(ValidNumberCases))]
     public void IsValidNumber_ShouldReturnTrue_WhenNumberIsValid(
         string value,
         int precision,
@@ -99,5 +74,70 @@ public class NumberValidatorTests
         var validator = new NumberValidator(precision, scale, onlyPositive);
 
         validator.IsValidNumber(value).Should().BeTrue();
+    }
+
+    private static IEnumerable<TestCaseData> InvalidPrecisionCases()
+    {
+        yield return new TestCaseData(0).SetName("{m}_PrecisionIsZero{a}"); // Собираем имя из названия теста + названия TestCase
+        yield return new TestCaseData(-1).SetName("{m}_PrecisionIsNegative{a}"); // + аргументов TestCase
+    }
+
+    private static IEnumerable<TestCaseData> InvalidScaleCases()
+    {
+        yield return new TestCaseData(1, -1).SetName("{m}_ScaleIsNegative{a}");
+        yield return new TestCaseData(1, 1).SetName("{m}_ScaleEqualsPrecision{a}");
+        yield return new TestCaseData(1, 2).SetName("{m}_ScaleGreaterThanPrecision{a}");
+    }
+
+    private static IEnumerable<TestCaseData> ValidConstructorCases()
+    {
+        yield return new TestCaseData(1, 0, true).SetName("{m}_MinValidPrecisionAndZeroScale{a}");
+        yield return new TestCaseData(3, 2, false).SetName("{m}_ValidPrecisionAndPositiveScale{a}");
+    }
+
+    private static IEnumerable<TestCaseData> InvalidFormatCases()
+    {
+        yield return new TestCaseData(null).SetName("{m}_ValueIsNull{a}");
+        yield return new TestCaseData("").SetName("{m}_ValueIsEmpty{a}");
+        yield return new TestCaseData("   ").SetName("{m}_ValueIsWhitespace{a}");
+        yield return new TestCaseData(" 1.1").SetName("{m}_LeadingWhitespace{a}");
+        yield return new TestCaseData("1.1 ").SetName("{m}_TrailingWhitespace{a}");
+        yield return new TestCaseData("a.sd").SetName("{m}_FullLettersInsteadDigits{a}");
+        yield return new TestCaseData("1.a").SetName("{m}_LettersInFractionalPart{a}");
+        yield return new TestCaseData("a.1").SetName("{m}_LettersInIntegerPart{a}");
+        yield return new TestCaseData("1.").SetName("{m}_MissingFractionalPartAfterSeparator{a}");
+        yield return new TestCaseData(".1").SetName("{m}_MissingIntegerPartBeforeSeparator{a}");
+        yield return new TestCaseData("1,.1").SetName("{m}_MultipleSeparators{a}");
+        yield return new TestCaseData("++1").SetName("{m}_MultipleSigns{a}");
+    }
+
+    private static IEnumerable<TestCaseData> PrecisionExceededCases()
+    {
+        yield return new TestCaseData("00.00", 3, 2).SetName("{m}_DigitsCountExceedsPrecision{a}");
+        yield return new TestCaseData("1234", 3, 0).SetName("{m}_IntegerLengthExceedsPrecision{a}");
+        yield return new TestCaseData("+1.23", 3, 2).SetName("{m}_LengthWithSignExceedsPrecision{a}");
+        yield return new TestCaseData("-1.23", 3, 2).SetName("{m}_LengthWithMinusSignExceedsPrecision{a}");
+    }
+
+    private static IEnumerable<TestCaseData> ScaleExceededCases()
+    {
+        yield return new TestCaseData("0.00", 5, 1).SetName("{m}_FractionalPartExceedsNonZeroScale{a}");
+        yield return new TestCaseData("1.1", 5, 0).SetName("{m}_FractionalPartPresentWhenScaleIsZero{a}");
+    }
+
+    private static IEnumerable<TestCaseData> NegativeNumberWhenOnlyPositiveCases()
+    {
+        yield return new TestCaseData("-1").SetName("{m}_NegativeIntegerWhenOnlyPositive{a}");
+        yield return new TestCaseData("-1.11").SetName("{m}_NegativeFractionWhenOnlyPositive{a}");
+    }
+
+    private static IEnumerable<TestCaseData> ValidNumberCases()
+    {
+        yield return new TestCaseData("0", 1, 0, true).SetName("{m}_SingleDigitZero{a}");
+        yield return new TestCaseData("1.1", 5, 2, true).SetName("{m}_ValidNumberWithDotSeparator{a}");
+        yield return new TestCaseData("1,1", 5, 2, true).SetName("{m}_ValidNumberWithCommaSeparator{a}");
+        yield return new TestCaseData("+1.23", 4, 2, true).SetName("{m}_PositiveWithPlusSignMatchingExactPrecisionAndScale{a}");
+        yield return new TestCaseData("-1.23", 4, 2, false).SetName("{m}_NegativeMatchingExactPrecisionAndScaleWhenAllowed{a}");
+        yield return new TestCaseData("123", 3, 2, true).SetName("{m}_IntegerWithScaleGreaterThanZero{a}");
     }
 }
